@@ -1,5 +1,6 @@
 # Load Packages 
 library(shiny)
+library(lubridate)
 library(tidyverse)
 library(viridis)
 library(plotly)
@@ -12,11 +13,14 @@ RawData <- read.csv("Data/2022SeasonGPS.csv")
 RawData$Date <- ymd(RawData$Date)
 # Add month column
 RawData$Month <- month(ymd(RawData$Date))
+# Unite session title and date
+RawData <- RawData %>%
+    unite(SessionDate, "Date":"Session.Title", sep = " - ", remove = FALSE)
 
 # Tidy data 
 
 RawData_Tidy <- RawData %>% 
-    select(Date, Month, Day, SessionDate, Session.Title, Tags, Split.Name, Split.Start.Time, Split.End.Time, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
+    select(Date, Month, SessionDate, Session.Title, Tags, Split.Name, Split.Start.Time, Split.End.Time, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
            Sprint.Distance..m., Duration, Distance.in.Speed.Zone.3...metres., 
            Distance.in.Speed.Zone.4...metres., Distance.in.Speed.Zone.5...metres.) %>% 
     rename(Athlete = Player.Name, 

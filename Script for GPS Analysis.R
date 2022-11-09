@@ -24,11 +24,12 @@ RawData$Month <- month(ymd(RawData$Date))
 RawData <- RawData %>%
   unite(SessionDate, "Date":"Session.Title", sep = " - ", remove = FALSE)
 
+
 # Tidy the tibble 
 # Select the columns we want for analysis. Rename for easier call up. Mutate new columns for new variables i.e. Raw Duration is in seconds
 # so convert to mins. # remove the columns we no longer need after the mutation. 
 RawData_Tidy <- RawData %>% 
-  select(Date, Month, Day, SessionDate, Session.Title, Tags, Split.Name, Split.Start.Time, Split.End.Time, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
+  select(Date, Month, SessionDate, Session.Title, Tags, Split.Name, Split.Start.Time, Split.End.Time, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
          Sprint.Distance..m., Duration, Distance.in.Speed.Zone.3...metres., 
          Distance.in.Speed.Zone.4...metres., Distance.in.Speed.Zone.5...metres.) %>% 
   rename(Athlete = Player.Name, 
@@ -46,6 +47,10 @@ RawData_Tidy <- RawData %>%
   select(-c(Duration, Distance.in.Speed.Zone.3...metres., Distance.in.Speed.Zone.4...metres. , Distance.in.Speed.Zone.5...metres.)) %>% 
   na.omit() 
   
+
+# Pivot the table long 
+RawData_Long <- RawData_Tidy %>% 
+  pivot_longer(cols = names_to = 'Variable', values_to = "Value")
 
 
 
