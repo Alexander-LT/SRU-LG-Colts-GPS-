@@ -1,3 +1,5 @@
+
+
 # Load Packages 
 library(shiny)
 library(lubridate)
@@ -6,21 +8,22 @@ library(viridis)
 library(plotly)
 library(bslib)
 library(DT)
+library(rsconnect)
+
 
 # Load data
 RawData <- read.csv("Data/2022SeasonGPS.csv")
 # Format dates 
-RawData$Date <- ymd(RawData$Date)
-# Add month column
-RawData$Month <- month(ymd(RawData$Date))
+RawData$Date <- dmy(RawData$Date)
+#RawData$Date <- format(as.Date(RawData$Date),'%d/%m/%Y')
 # Unite session title and date
 RawData <- RawData %>%
     unite(SessionDate, "Date":"Session.Title", sep = " - ", remove = FALSE)
 
-# Tidy data 
 
+# Tidy data 
 RawData_Tidy <- RawData %>% 
-    select(Date, Month, SessionDate, Session.Title, Tags, Split.Name, Split.Start.Time, Split.End.Time, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
+    select(Date, SessionDate, Session.Title, Tags, Split.Name, Player.Name, Distance..metres., Distance.Per.Min..m.min., Top.Speed..m.s.,
            Sprint.Distance..m., Duration, Distance.in.Speed.Zone.3...metres., 
            Distance.in.Speed.Zone.4...metres., Distance.in.Speed.Zone.5...metres.) %>% 
     rename(Athlete = Player.Name, 
@@ -38,36 +41,72 @@ RawData_Tidy <- RawData %>%
     select(-c(Duration, Distance.in.Speed.Zone.3...metres., Distance.in.Speed.Zone.4...metres. , Distance.in.Speed.Zone.5...metres.)) %>% 
     na.omit() 
 
+# Pivot the table long 
+RawData_Long <- RawData_Tidy %>% 
+    pivot_longer(cols = c('Distance':'HSR'), names_to = 'Variable', values_to = "Value") %>% 
+    arrange(Date) %>% 
+    filter(Split.Name == "all" | Split.Name == "game") %>% # Remove a lot of session tags. 
+    mutate(Athlete = case_when(    # Deidentify players 
+        Athlete == "Luca Rossi" ~ 'Athlete1',
+        Athlete == "Joey Ryan" ~ 'Athlete2',
+        Athlete == "Charlie Moses" ~ 'Athlete3',
+        Athlete == "Luca Antico" ~ 'Athlete3',
+        Athlete == "Leo Ferguson" ~ 'Athlete4',
+        Athlete == "Dylan Hansen" ~ 'Athlete5',
+        Athlete == "Jack Ricci" ~ 'Athlete6',
+        Athlete == "Carter Dombkins" ~ 'Athlete7',
+        Athlete == "Ollie Little" ~ 'Athlete8',
+        Athlete == "Henry Hyde" ~ 'Athlete9',
+        Athlete == "Harvey McGregor" ~ 'Athlete10',
+        Athlete == "Connor Bond" ~ 'Athlete11',
+        Athlete == "Callan Oeding" ~ 'Athlete12',
+        Athlete == "Andrew Blackburn" ~ 'Athlete13',
+        Athlete == "Ben Wallace" ~ 'Athlete14',
+        Athlete == "Jack Tougher-Wells" ~ 'Athlete15',
+        Athlete == "Ben Falla" ~ 'Athlete16',
+        Athlete == "Digby Lilburne" ~ 'Athlete17',
+        Athlete == "Tyson Cogan" ~ 'Athlete18',
+        Athlete == "Connor McMullen" ~ 'Athlete19',
+        Athlete == "Liam Sartena" ~ 'Athlete20',
+        Athlete == "Ben Adams" ~ 'Athlete21',
+        Athlete == "Vereniki Duarara" ~ 'Athlete22',
+        Athlete == "Jonah O Sullivan" ~ 'Athlete23',
+        Athlete == "Ezrome Iosefa" ~ 'Athlete24',
+        Athlete == "Lisate Tupou" ~ 'Athlete25',
+        Athlete == "Darcy Mulrooney" ~ 'Athlete26',
+        TRUE ~ Athlete))
 
+
+    
 
 # Define UI for application - can change title below, to add in team name
 ui <- navbarPage("Example GPS Report",
                  # Add navbar - can change name (to "By Athlete", for example)
-                 tabPanel("By Athlete", 
+                 tabPanel("Athlete Analysis", 
                           # Create a dropdown selection for individual athlete analysis
-                          selectInput("Athlete", label = h4("Select Athlete:"), 
-                                      choices = unique(RawData_Tidy$Athlete), 
+                          selectInput("AthleteName", label = h4("Select Athlete:"), 
+                                      choices = unique(RawData_Long$Athlete), 
                                       selected = 1),
                           # Plot output (code below in server)
                           mainPanel(plotOutput("plot1"), width = "100%", height = "100%")),
                  # Repeat for session/ by date analysis
                  tabPanel("Session Analysis", 
                           selectInput("SessionDate1", label = h3("Select Session Date:"), 
-                                      choices = unique(RawData_Tidy$SessionDate), 
+                                      choices = unique(RawData_Long$SessionDate), 
                                       selected = 1),
                           # Create plot output
                           mainPanel(plotOutput("plot2"), width = "100%", height = "100%")), 
                  # Repeat for session/ by date analysis (interactive)
                  tabPanel("Session Analysis (Interactive)", 
                           selectInput("SessionDate2", label = h3("Select Session Date:"), 
-                                      choices = unique(RawData_Tidy$SessionDate), 
+                                      choices = unique(RawData_Long$SessionDate), 
                                       selected = 1),
                           # Create plot output
                           mainPanel(plotlyOutput("plot3"), width = "100%", height = "100%")), 
                  # Repeat for session type
                  tabPanel("Session Type Analysis (Interactive)", 
                           selectInput("SessionType", label = h3("Select Session Type:"), 
-                                      choices = unique(RawData_Tidy$Split.Name), 
+                                      choices = unique(RawData_Long$Split.Name), 
                                       selected = 1),
                           # Create plot output
                           mainPanel(plotlyOutput("plot4"), width = "100%", height = "100%")), 
@@ -79,7 +118,7 @@ ui <- navbarPage("Example GPS Report",
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     output$plot1 <- renderPlot({
-        SelectedAthlete <- RawData_Tidy[RawData_Tidy$Athlete==input$AthleteName,] 
+        SelectedAthlete <- RawData_Long[RawData_Long$Athlete==input$AthleteName,] 
         ggplot(data = SelectedAthlete, aes(x = Date, y = Value)) + 
             geom_line(linetype = "dashed", colour = "grey") +
             geom_point(aes(colour = Split.Name), size = 4) +
@@ -98,7 +137,7 @@ server <- function(input, output) {
     }, height = 900)
     
     output$plot2 <- renderPlot({
-        SelectedDate <- RawData_Tidy[RawData_Tidy$SessionDate==input$SessionDate1,] 
+        SelectedDate <- RawData_Long[RawData_Long$SessionDate==input$SessionDate1,] 
         ggplot(data = SelectedDate, aes(x = Variable, y = Value)) + 
             geom_boxplot(alpha = 0.7, colour = "lightgrey", outlier.shape = NA) +
             geom_jitter(aes(colour = Athlete), size = 4) +
@@ -117,7 +156,7 @@ server <- function(input, output) {
     }, height = 900)
     
     output$plot3 <- renderPlotly({
-        SelectedDate2 <- RawData_Tidy[RawData_Tidy$SessionDate==input$SessionDate2,] 
+        SelectedDate2 <- RawData_Long[RawData_Long$SessionDate==input$SessionDate2,] 
         print(
             ggplotly(
                 ggplot(data = SelectedDate2, aes(x = Variable, y = Value)) + 
@@ -138,7 +177,7 @@ server <- function(input, output) {
     })
     
     output$plot4 <- renderPlotly({
-        SelectedSessionType <- RawData_Tidy[RawData_Tidy$Split.Name==input$SessionType,] 
+        SelectedSessionType <- RawData_Long[RawData_Long$Split.Name==input$SessionType,] 
         print(
             ggplotly(
                 ggplot(data = SelectedSessionType, aes(x = Variable, y = Value, label = Date)) + 
